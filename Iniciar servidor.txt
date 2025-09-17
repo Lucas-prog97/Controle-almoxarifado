@@ -1,0 +1,35 @@
+mysql -u root -p
+
+Digite no prompt do MySQL:
+
+USE meu_projeto;
+
+Digite:
+SHOW TABLES;
+
+Digite:
+SELECT * FROM usuarios;
+
+Saia do MySQL com:
+exit;
+
+cd C:\Users\lucas.pacheco\OneDrive - Sistema Fiergs\Documentos\Controle-almoxarifado
+
+Certifique-se de que o arquivo server.js está presente. Liste os arquivos com:
+dir
+
+Executar o Servidor:
+
+node server.js
+
+
+
+
+___________
+
+
+
+Itens Sumindo ao Reiniciar o Servidor:
+
+Sim, você está certo: os dados deveriam ficar salvos no banco de dados MySQL, mesmo com quedas de energia (o MySQL é persistente por natureza). O problema é que o código tem DROP TABLE IF EXISTS itens_almoxarifado no server.js, que apaga e recria a tabela vazia toda vez que o servidor inicia. Isso foi intencional para teste (para limpar dados antigos), mas para produção, precisamos remover.
+Solução: Removi o DROP TABLE do server.js. Agora, os itens ficam salvos permanentemente. Se quiser limpar o banco um dia, rode manualmente no MySQL: DROP TABLE itens_almoxarifado;.

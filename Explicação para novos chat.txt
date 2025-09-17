@@ -1,0 +1,29 @@
+A pasta do projeto está localizada em: C:\Users\lucas.pacheco\OneDrive - Sistema Fiergs\Documentos\Controle-almoxarifado
+
+Estrutura da pasta
+pasta: .vscode
+	settings.json
+pasta: assets
+	script.js
+	style.css
+pasta: Imagens
+	FundoSite.png
+	item1.png
+	item2.png
+	SENAI.png
+pasta: node_modules
+	diversos arquivos...
+__________
+admin.html
+dashboard.html
+dev.html
+index.html
+pachage.json
+package-lock.json
+ProjetoAlmoxarifado.session.sql
+server.js
+user.html
+
+Abaixo mandarei os códigos dele para você ter o conhecimento.
+
+Index.html:
