@@ -85,6 +85,107 @@
             height: auto;
             border-radius: 5px;
         }
+        .quantidade-minima { color: red; }
+        .disabled { opacity: 0.5; pointer-events: none; }
+        .btn-excluir { background-color: #ff4444; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; margin-right: 5px; }
+        .btn-excluir:hover { background-color: #cc0000; }
+        .btn-editar { background-color: #4CAF50; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; margin-right: 5px; }
+        .btn-editar:hover { background-color: #45a049; }
+
+        /* Novos estilos para a modal de movimentações */
+        #movimentacoesModal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        #movimentacoesModal .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border: 1px solid #ddd;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 85vh;
+            overflow-y: auto;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            text-align: left;
+        }
+        #movimentacoesModal h2 {
+            margin-bottom: 20px;
+            color: #003087;
+            font-size: 1.5em;
+        }
+        #movimentacoesModal .filter-buttons button {
+            padding: 8px 15px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #movimentacoesModal .filter-buttons .date-filter {
+            background: #007bff;
+            color: white;
+        }
+        #movimentacoesModal .filter-buttons .exit-filter {
+            background: #dc3545;
+            color: white;
+        }
+        #movimentacoesModal .filter-buttons .clear-filter {
+            background: #6c757d;
+            color: white;
+        }
+        #movimentacoesModal .search-bar {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+        }
+        #movimentacoesModal .search-bar input {
+            flex: 1;
+            padding: 8px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #movimentacoesModal .search-bar select {
+            padding: 8px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #movimentacoesModal .search-bar button {
+            padding: 8px 15px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #movimentacoesModal table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        #movimentacoesModal th, #movimentacoesModal td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+        #movimentacoesModal th {
+            background-color: #003087;
+            color: white;
+        }
+        #movimentacoesModal .item-img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body class="dashboard-page">
@@ -106,7 +207,7 @@
 
     <div class="actions-bar">
         <button onclick="novoItem()">+ Novo</button>
-        <button onclick="goToMovimentacoes()">Movimentações</button>
+        <button onclick="openMovimentacoesModal()">Movimentações</button>
         <button onclick="exportar()">Exportar</button>
         <!-- Botão visível só para admins -->
         <button id="gerenciarUsuariosBtn" onclick="openRegisterModal()" style="display: none;">Gerenciar Usuários</button>
@@ -164,6 +265,7 @@
                         <select id="newRole" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
                             <option value="user">User (Padrão)</option>
                             <option value="admin">Admin</option>
+                            <option value="developer">Developer</option>
                         </select>
                     </div>
                     <div style="display: flex; gap: 10px; justify-content: flex-end;">
@@ -182,6 +284,30 @@
                     <button onclick="closeRegisterModal()" style="padding: 10px 20px; background: #f5f5f5; color: #003087; border: 1px solid #ddd; border-radius: 5px; cursor: pointer;">Fechar</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal para edição de usuário -->
+    <div id="editUserModal" class="modal">
+        <div class="modal-content">
+            <h2>Editar Role do Usuário</h2>
+            <form id="editUserForm">
+                <div class="form-group">
+                    <label for="editUserEmail">E-mail:</label>
+                    <input type="text" id="editUserEmail" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="editUserRole">Nova Role:</label>
+                    <select id="editUserRole" required>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                        <option value="developer">Developer</option>
+                    </select>
+                </div>
+                <button type="submit" class="confirm-btn">Salvar Alterações</button>
+                <button type="button" class="cancel-btn" onclick="closeEditUserModal()">Cancelar</button>
+                <div id="editUserMsg" style="margin-top: 15px; font-weight: bold;"></div>
+            </form>
         </div>
     </div>
 
@@ -255,7 +381,7 @@
     <!-- Modal para entrada de estoque -->
     <div id="stockEntryModal" class="modal">
         <div class="modal-content">
-            <h2>Adicionar Estoque</h2>
+            <h2 id="stockModalTitle">Adicionar Estoque</h2>
             <input type="number" id="entryQuantity" min="1" placeholder="Quantidade" required>
             <button class="confirm-btn" onclick="confirmStockEntry()">Confirmar</button>
             <button class="cancel-btn" onclick="closeStockEntryModal()">Cancelar</button>
@@ -324,6 +450,45 @@
         </div>
     </div>
 
+    <!-- Modal para movimentações -->
+    <div id="movimentacoesModal" class="modal">
+        <div class="modal-content">
+            <h2>Histórico de Movimentações</h2>
+            <div class="filter-buttons">
+                <button class="date-filter" onclick="filterByDate()">Filtrar por Data</button>
+                <button class="exit-filter" onclick="filterByExits()">Filtrar Saídas</button>
+                <button class="clear-filter" onclick="clearFilters()">Limpar Filtros</button>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="movimentacaoSearch" placeholder="Buscar em movimentações (nesta página)..." oninput="filterMovimentacoes()">
+                <select id="movimentacaoType">
+                    <option value="">Todos</option>
+                    <!-- Opções de setor serão preenchidas dinamicamente -->
+                </select>
+                <button onclick="exportVisible()">Exportar Visíveis</button>
+            </div>
+            <table id="movimentacoesTable">
+                <thead>
+                    <tr>
+                        <th>Imagem</th>
+                        <th>Tipo</th>
+                        <th>Código</th>
+                        <th>Nome</th>
+                        <th>Qtd</th>
+                        <th>Data</th>
+                        <th>Obs.</th>
+                        <th>NF</th>
+                        <th>Usuário</th>
+                    </tr>
+                </thead>
+                <tbody id="movimentacoesBody">
+                    <!-- Linhas populadas via JS -->
+                </tbody>
+            </table>
+            <button type="button" onclick="closeMovimentacoesModal()" style="padding: 10px 20px; background: #f5f5f5; color: #003087; border: 1px solid #ddd; border-radius: 5px; cursor: pointer; margin-top: 20px;">Fechar</button>
+        </div>
+    </div>
+
     <script>
         // Variável global para currentUser
         let currentUser;
@@ -334,6 +499,7 @@
         let itens = [];
         let currentPage = 1;
         const itemsPerPage = 5;
+        let movimentacoes = [];
 
         // Funções globais
         function logout() {
@@ -343,11 +509,11 @@
         }
 
         function novoItem() {
+            console.log('Novo Item clicked');
             if (!currentUser || currentUser.role !== 'admin') {
                 alert('Apenas administradores podem cadastrar novos itens.');
                 return;
             }
-            console.log('Novo Item clicked');
             document.getElementById('novoItemModal').style.display = 'block';
             document.getElementById('novoItemForm').reset();
             document.getElementById('imagemPreview').style.display = 'none';
@@ -362,8 +528,426 @@
             document.getElementById('imagemPreview').style.display = 'none';
         }
 
-        // Preview da imagem no cadastro
-        document.addEventListener('DOMContentLoaded', function() {
+        function goToMovimentacoes() {
+            console.log('Movimentações clicked');
+            alert('Ir para página de movimentações (futuro)');
+        }
+
+        function exportar() {
+            console.log('Exportar clicked');
+            alert('Exportar para CSV/Excel (futuro)');
+        }
+
+        function openRegisterModal() {
+            console.log('Open Register Modal clicked');
+            if (!currentUser || currentUser.role !== 'admin') {
+                alert('Apenas administradores podem gerenciar usuários.');
+                return;
+            }
+            document.getElementById('registerModal').style.display = 'block';
+            loadUsers();
+        }
+
+        function closeRegisterModal() {
+            console.log('Close Register Modal clicked');
+            document.getElementById('registerModal').style.display = 'none';
+            document.getElementById('registerForm').reset();
+            document.getElementById('registerMsg').textContent = '';
+        }
+
+        function switchTab(tab) {
+            if (tab === 'cadastrar') {
+                document.getElementById('cadastrarSection').style.display = 'block';
+                document.getElementById('excluirSection').style.display = 'none';
+                document.getElementById('cadastrarTab').style.background = '#003087';
+                document.getElementById('cadastrarTab').style.color = 'white';
+                document.getElementById('excluirTab').style.background = '#f5f5f5';
+                document.getElementById('excluirTab').style.color = '#003087';
+            } else {
+                document.getElementById('cadastrarSection').style.display = 'none';
+                document.getElementById('excluirSection').style.display = 'block';
+                document.getElementById('cadastrarTab').style.background = '#f5f5f5';
+                document.getElementById('cadastrarTab').style.color = '#003087';
+                document.getElementById('excluirTab').style.background = '#003087';
+                document.getElementById('excluirTab').style.color = 'white';
+            }
+        }
+
+        async function loadUsers() {
+            console.log('Loading users for:', currentUser.email);
+            if (!currentUser || !currentUser.email) {
+                document.getElementById('usersList').innerHTML = '<p style="color: red;">Erro: Usuário não autenticado.</p>';
+                return;
+            }
+            try {
+                const response = await fetch(`http://localhost:3000/api/users?requesterEmail=${encodeURIComponent(currentUser.email)}`);
+                const data = await response.json();
+                console.log('API Response:', data);
+                if (data.success) {
+                    const usersList = document.getElementById('usersList');
+                    usersList.innerHTML = data.users.map(user => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
+                            <span>${user.email} (${user.role})</span>
+                            <div>
+                                <button class="btn-editar" onclick="openEditUserModal('${user.email}', '${user.role}')">Editar</button>
+                                <button class="btn-excluir" onclick="deleteUser('${user.email}')">Excluir</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    document.getElementById('usersList').innerHTML = '<p style="color: red;">Erro ao carregar usuários: ' + data.message + '</p>';
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                document.getElementById('usersList').innerHTML = '<p style="color: red;">Erro de conexão ao carregar usuários.</p>';
+            }
+        }
+
+        async function deleteUser(userEmail) {
+            if (!confirm(`Tem certeza que deseja excluir o usuário ${userEmail}?`)) return;
+
+            const requesterEmail = currentUser.email;
+            console.log('Deleting user:', userEmail, 'by:', requesterEmail);
+            try {
+                const response = await fetch('http://localhost:3000/api/delete-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userEmail, requesterEmail })
+                });
+                const data = await response.json();
+                console.log('Delete Response:', data);
+                if (data.success) {
+                    alert(data.message);
+                    loadUsers(); // Recarregar lista
+                } else {
+                    alert(data.message || 'Erro ao excluir usuário');
+                }
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                alert('Erro de conexão ao excluir usuário.');
+            }
+        }
+
+        function openEditUserModal(email, currentRole) {
+            console.log('Open Edit User Modal for:', email);
+            if (!currentUser || currentUser.role !== 'admin') {
+                alert('Apenas administradores podem editar usuários.');
+                return;
+            }
+            document.getElementById('editUserModal').style.display = 'block';
+            document.getElementById('editUserModal').dataset.userEmail = email;
+            document.getElementById('editUserEmail').value = email;
+            document.getElementById('editUserRole').value = currentRole;
+            document.getElementById('editUserMsg').textContent = '';
+        }
+
+        function closeEditUserModal() {
+            console.log('Close Edit User Modal clicked');
+            document.getElementById('editUserModal').style.display = 'none';
+            document.getElementById('editUserForm').reset();
+            document.getElementById('editUserMsg').textContent = '';
+        }
+
+        function openStockEntryModal(id) {
+            console.log(`Open Stock Entry Modal for Item ${id}`);
+            if (!currentUser || currentUser.role !== 'admin') {
+                alert('Apenas administradores podem adicionar estoque.');
+                return;
+            }
+            document.getElementById('stockEntryModal').style.display = 'block';
+            document.getElementById('stockEntryModal').dataset.itemId = id;
+            document.getElementById('stockModalTitle').textContent = 'Adicionar Estoque';
+            document.getElementById('stockEntryModal').dataset.action = 'add';
+            document.getElementById('entryQuantity').value = '';
+        }
+
+        function closeStockEntryModal() {
+            console.log('Close Stock Entry Modal clicked');
+            document.getElementById('stockEntryModal').style.display = 'none';
+        }
+
+        async function confirmStockEntry() {
+            console.log('Confirm Stock Entry');
+            const id = document.getElementById('stockEntryModal').dataset.itemId;
+            const quantity = document.getElementById('entryQuantity').value;
+            if (!quantity || isNaN(quantity) || parseInt(quantity, 10) <= 0) {
+                alert('Por favor, insira uma quantidade válida maior que 0.');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3000/api/add-stock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ itemId: id, quantity: quantity, requesterEmail: currentUser.email })
+                });
+                const data = await response.json();
+                console.log('Resposta do servidor:', data);
+
+                if (data.success) {
+                    alert(data.message);
+                    closeStockEntryModal();
+                    loadItens(); // Recarrega a tabela
+                } else {
+                    alert(data.message || 'Erro ao adicionar estoque');
+                }
+            } catch (error) {
+                console.error('Erro na entrada:', error);
+                alert('Erro de conexão. Verifique o servidor.');
+            }
+        }
+
+        function openRemoveStockModal(id) {
+            console.log(`Open Remove Stock Modal for Item ${id}`);
+            if (!currentUser || currentUser.role !== 'admin') {
+                alert('Apenas administradores podem remover estoque.');
+                return;
+            }
+            document.getElementById('stockEntryModal').style.display = 'block';
+            document.getElementById('stockEntryModal').dataset.itemId = id;
+            document.getElementById('stockEntryModal').dataset.action = 'remove';
+            document.getElementById('stockModalTitle').textContent = 'Remover Estoque';
+            document.getElementById('entryQuantity').value = '';
+        }
+
+        async function confirmRemoveStock() {
+            console.log('Confirm Remove Stock');
+            const id = document.getElementById('stockEntryModal').dataset.itemId;
+            const quantity = document.getElementById('entryQuantity').value;
+            if (!quantity || isNaN(quantity) || parseInt(quantity, 10) <= 0) {
+                alert('Por favor, insira uma quantidade válida maior que 0.');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3000/api/remove-stock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ itemId: id, quantity: quantity, requesterEmail: currentUser.email })
+                });
+                const data = await response.json();
+                console.log('Resposta do servidor:', data);
+
+                if (data.success) {
+                    alert(data.message);
+                    closeStockEntryModal();
+                    loadItens(); // Recarrega a tabela
+                } else {
+                    alert(data.message || 'Erro ao remover estoque');
+                }
+            } catch (error) {
+                console.error('Erro na baixa:', error);
+                alert('Erro de conexão. Verifique o servidor.');
+            }
+        }
+
+        function openEditItemModal(id) {
+            console.log(`Open Edit Item Modal for Item ${id}`);
+            if (!currentUser || currentUser.role !== 'admin') {
+                alert('Apenas administradores podem editar itens.');
+                return;
+            }
+            const item = itens.find(i => i.id === id);
+            if (item) {
+                document.getElementById('editItemModal').style.display = 'block';
+                document.getElementById('editItemModal').dataset.itemId = id;
+                document.getElementById('editCodigo').value = item.codigo || '';
+                document.getElementById('editSetor').value = item.setor || '';
+                document.getElementById('editNome').value = item.nome || '';
+                document.getElementById('editComplemento').value = item.complemento || '';
+                document.getElementById('editUnidade').value = item.unidade || 'UN';
+                document.getElementById('editQtdInicial').value = item.qtd_inicial || 0;
+                document.getElementById('editQtdMinima').value = item.qtd_minima || 0;
+                document.getElementById('editObservacao').value = item.observacao || '';
+                document.getElementById('editFornecedor').value = item.fornecedor || '';
+                document.getElementById('editNotaFiscal').value = item.nota_fiscal || '';
+                const editPreviewImg = document.getElementById('editPreviewImg');
+                const editImagemPreview = document.getElementById('editImagemPreview');
+                if (item.imagem_path) {
+                    editPreviewImg.src = `/${item.imagem_path}`;
+                    editImagemPreview.style.display = 'block';
+                } else {
+                    editImagemPreview.style.display = 'none';
+                }
+                document.getElementById('editItemMsg').textContent = '';
+            }
+        }
+
+        function closeEditItemModal() {
+            console.log('Close Edit Item Modal clicked');
+            document.getElementById('editItemModal').style.display = 'none';
+            document.getElementById('editItemForm').reset();
+            document.getElementById('editImagemPreview').style.display = 'none';
+            document.getElementById('editItemMsg').textContent = '';
+        }
+
+        // Funções para a modal de movimentações
+        function openMovimentacoesModal() {
+            document.getElementById('movimentacoesModal').style.display = 'block';
+            loadMovimentacoes();
+            populateSetorOptions();
+        }
+
+        function closeMovimentacoesModal() {
+            document.getElementById('movimentacoesModal').style.display = 'none';
+        }
+
+        async function loadMovimentacoes() {
+            try {
+                // Chama a API para carregar movimentações reais
+                const response = await fetch('http://localhost:3000/api/movimentacoes');
+                movimentacoes = await response.json();
+                // Se não houver movimentações, usa os dados dos itens como base
+                if (!movimentacoes.length) {
+                    movimentacoes = itens.map(item => ({
+                        id: item.id,
+                        imagem_path: item.imagem_path || './Imagens/placeholder.png',
+                        tipo: 'ESTOQUE INICIAL',
+                        codigo: item.codigo,
+                        nome: item.nome,
+                        qtd: item.qtd_inicial,
+                        data: new Date().toLocaleString('pt-BR'),
+                        obs: item.observacao || '',
+                        nf: item.nota_fiscal || '',
+                        usuario: currentUser.email || 'Sistema'
+                    }));
+                }
+                renderMovimentacoes();
+            } catch (error) {
+                console.error('Erro ao carregar movimentações:', error);
+                // Fallback para itens como movimentações iniciais
+                movimentacoes = itens.map(item => ({
+                    id: item.id,
+                    imagem_path: item.imagem_path || './Imagens/placeholder.png',
+                    tipo: 'ESTOQUE INICIAL',
+                    codigo: item.codigo,
+                    nome: item.nome,
+                    qtd: item.qtd_inicial,
+                    data: new Date().toLocaleString('pt-BR'),
+                    obs: item.observacao || '',
+                    nf: item.nota_fiscal || '',
+                    usuario: currentUser.email || 'Sistema'
+                }));
+                renderMovimentacoes();
+            }
+        }
+
+        function populateSetorOptions() {
+            const select = document.getElementById('movimentacaoType');
+            // Simulação de setores baseados nos itens (substitua por uma chamada à API se necessário)
+            const setores = [...new Set(itens.map(item => item.setor))];
+            setores.forEach(setor => {
+                const option = document.createElement('option');
+                option.value = setor;
+                option.textContent = setor;
+                select.appendChild(option);
+            });
+        }
+
+        function renderMovimentacoes(filteredMovimentacoes = movimentacoes) {
+            const tbody = document.getElementById('movimentacoesBody');
+            tbody.innerHTML = filteredMovimentacoes.map(mov => `
+                <tr>
+                    <td><img src="./Imagens/${mov.imagem_path || 'placeholder.png'}" alt="Item" class="item-img" onerror="this.src='./Imagens/placeholder.png'; this.onerror=null;"></td>
+                    <td>${mov.tipo}</td>
+                    <td>${mov.codigo}</td>
+                    <td>${mov.nome}</td>
+                    <td>${mov.qtd}</td>
+                    <td>${mov.data}</td>
+                    <td>${mov.obs || ''}</td>
+                    <td>${mov.nf || ''}</td>
+                    <td>${mov.usuario || ''}</td>
+                </tr>
+            `).join('');
+        }
+
+        function filterByDate() {
+            // Implementação fictícia - adicione um input de data para filtrar
+            alert('Filtrar por Data (implementar input de data)');
+        }
+
+        function filterByExits() {
+            const filtered = movimentacoes.filter(mov => mov.tipo === 'SAÍDA');
+            renderMovimentacoes(filtered);
+        }
+
+        function clearFilters() {
+            renderMovimentacoes();
+            document.getElementById('movimentacaoSearch').value = '';
+            document.getElementById('movimentacaoType').value = '';
+        }
+
+        function filterMovimentacoes() {
+            const query = document.getElementById('movimentacaoSearch').value.toLowerCase();
+            const tipo = document.getElementById('movimentacaoType').value;
+            let filtered = movimentacoes;
+
+            if (query) {
+                filtered = filtered.filter(mov =>
+                    (mov.codigo && mov.codigo.toLowerCase().includes(query)) ||
+                    (mov.nome && mov.nome.toLowerCase().includes(query)) ||
+                    (mov.usuario && mov.usuario.toLowerCase().includes(query))
+                );
+            }
+            if (tipo) {
+                filtered = filtered.filter(mov => {
+                    const item = itens.find(i => i.codigo === mov.codigo);
+                    return item && item.setor === tipo;
+                });
+            }
+            renderMovimentacoes(filtered);
+        }
+
+        function exportVisible() {
+            const rows = document.querySelectorAll('#movimentacoesTable tbody tr');
+            let csv = 'Imagem,Tipo,Código,Nome,Qtd,Data,Obs.,NF,Usuário\n';
+            rows.forEach(row => {
+                const cols = row.querySelectorAll('td');
+                const img = cols[0].querySelector('img').src;
+                const tipo = cols[1].textContent;
+                const codigo = cols[2].textContent;
+                const nome = cols[3].textContent;
+                const qtd = cols[4].textContent;
+                const data = cols[5].textContent;
+                const obs = cols[6].textContent;
+                const nf = cols[7].textContent;
+                const usuario = cols[8].textContent;
+                csv += `"${img}",${tipo},${codigo},${nome},${qtd},${data},${obs},${nf},${usuario}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'movimentacoes.csv';
+            a.click();
+        }
+
+        // Código que depende de DOM pronto
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inicializar currentUser a partir do localStorage
+            currentUser = JSON.parse(localStorage.getItem('loggedUser'));
+            if (!currentUser || !currentUser.email) {
+                currentUser = { name: 'Lucas Pacheco', email: 'lucas.pacheco@senairs.org.br', role: 'admin' }; // Nome explícito como exemplo
+                localStorage.setItem('loggedUser', JSON.stringify(currentUser));
+                console.log('Default user set in localStorage:', currentUser);
+            }
+            console.log('Current User from LocalStorage:', currentUser);
+
+            // Atualizar o nome do usuário na saudação
+            const userNameSpan = document.getElementById('userName');
+            userNameSpan.textContent = currentUser.name || currentUser.email.split('@')[0]; // Usa name se existir, senão o e-mail sem domínio
+
+            const gerenciarBtn = document.getElementById('gerenciarUsuariosBtn');
+            console.log('Gerenciar Usuários Button:', gerenciarBtn);
+
+            if (currentUser && currentUser.role === 'admin') {
+                console.log('User is Admin, setting button to display: block');
+                gerenciarBtn.style.display = 'block';
+            } else {
+                console.log('User is not Admin, keeping button display: none');
+            }
+
+            // Event listeners para preview de imagem no cadastro
             document.getElementById('imagem').addEventListener('change', function(e) {
                 const file = e.target.files[0];
                 if (file) {
@@ -375,10 +959,21 @@
                     reader.readAsDataURL(file);
                 }
             });
-        });
 
-        // Submit do formulário novo item
-        document.addEventListener('DOMContentLoaded', function() {
+            // Event listeners para preview de imagem na edição
+            document.getElementById('editImagem').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('editPreviewImg').src = e.target.result;
+                        document.getElementById('editImagemPreview').style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Event listener para submit do formulário novo item
             document.getElementById('novoItemForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const formData = new FormData();
@@ -421,237 +1016,8 @@
                     document.getElementById('novoItemMsg').style.color = 'red';
                 }
             });
-        });
 
-        function goToMovimentacoes() {
-            console.log('Movimentações clicked');
-            alert('Ir para página de movimentações (futuro)');
-        }
-
-        function exportar() {
-            console.log('Exportar clicked');
-            alert('Exportar para CSV/Excel (futuro)');
-        }
-
-        function openRegisterModal() {
-            if (!currentUser || currentUser.role !== 'admin') {
-                alert('Apenas administradores podem gerenciar usuários.');
-                return;
-            }
-            console.log('Open Register Modal clicked');
-            document.getElementById('registerModal').style.display = 'block';
-            loadUsers(); // Carregar lista de usuários para a aba Excluir
-        }
-
-        function closeRegisterModal() {
-            console.log('Close Register Modal clicked');
-            document.getElementById('registerModal').style.display = 'none';
-            document.getElementById('registerForm').reset();
-            document.getElementById('registerMsg').textContent = '';
-        }
-
-        function switchTab(tab) {
-            if (tab === 'cadastrar') {
-                document.getElementById('cadastrarSection').style.display = 'block';
-                document.getElementById('excluirSection').style.display = 'none';
-                document.getElementById('cadastrarTab').style.background = '#003087';
-                document.getElementById('cadastrarTab').style.color = 'white';
-                document.getElementById('excluirTab').style.background = '#f5f5f5';
-                document.getElementById('excluirTab').style.color = '#003087';
-            } else {
-                document.getElementById('cadastrarSection').style.display = 'none';
-                document.getElementById('excluirSection').style.display = 'block';
-                document.getElementById('cadastrarTab').style.background = '#f5f5f5';
-                document.getElementById('cadastrarTab').style.color = '#003087';
-                document.getElementById('excluirTab').style.background = '#003087';
-                document.getElementById('excluirTab').style.color = 'white';
-            }
-        }
-
-        async function loadUsers() {
-            console.log('Loading users for:', currentUser.email);
-            if (!currentUser || !currentUser.email) {
-                console.error('No currentUser or email defined');
-                document.getElementById('usersList').innerHTML = '<p style="color: red;">Erro: Usuário não autenticado.</p>';
-                return;
-            }
-            try {
-                const response = await fetch(`http://localhost:3000/api/users?requesterEmail=${encodeURIComponent(currentUser.email)}`);
-                const data = await response.json();
-                console.log('API Response:', data);
-                if (data.success) {
-                    const usersList = document.getElementById('usersList');
-                    usersList.innerHTML = data.users.map(user => `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
-                            <span>${user.email} (${user.role})</span>
-                            <button onclick="deleteUser('${user.email}')" style="padding: 5px 10px; background: #ff0000; color: white; border: none; border-radius: 3px; cursor: pointer;">Excluir</button>
-                        </div>
-                    `).join('');
-                } else {
-                    document.getElementById('usersList').innerHTML = '<p style="color: red;">Erro ao carregar usuários: ' + data.message + '</p>';
-                }
-            } catch (error) {
-                console.error('Error loading users:', error);
-                document.getElementById('usersList').innerHTML = '<p style="color: red;">Erro de conexão ao carregar usuários.</p>';
-            }
-        }
-
-        async function deleteUser(userEmail) {
-            if (!confirm(`Tem certeza que deseja excluir o usuário ${userEmail}?`)) return;
-
-            const requesterEmail = currentUser.email;
-            console.log('Deleting user:', userEmail, 'by:', requesterEmail);
-            try {
-                const response = await fetch('http://localhost:3000/api/delete-user', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userEmail, requesterEmail })
-                });
-                const data = await response.json();
-                console.log('Delete Response:', data);
-                if (data.success) {
-                    alert(data.message);
-                    loadUsers(); // Recarregar lista
-                } else {
-                    alert(data.message || 'Erro ao excluir usuário');
-                }
-            } catch (error) {
-                console.error('Error deleting user:', error);
-                alert('Erro de conexão ao excluir usuário.');
-            }
-        }
-
-        function openStockEntryModal(id) {
-            if (!currentUser || currentUser.role !== 'admin') {
-                alert('Apenas administradores podem adicionar estoque.');
-                return;
-            }
-            console.log(`Open Stock Entry Modal for Item ${id}`);
-            document.getElementById('stockEntryModal').style.display = 'block';
-            document.getElementById('stockEntryModal').dataset.itemId = id;
-            document.getElementById('entryQuantity').value = '';
-        }
-
-        function closeStockEntryModal() {
-            console.log('Close Stock Entry Modal clicked');
-            document.getElementById('stockEntryModal').style.display = 'none';
-        }
-
-        async function confirmStockEntry() {
-            const id = document.getElementById('stockEntryModal').dataset.itemId;
-            const quantity = document.getElementById('entryQuantity').value;
-            if (!quantity || isNaN(quantity) || parseInt(quantity, 10) <= 0) {
-                alert('Por favor, insira uma quantidade válida maior que 0.');
-                return;
-            }
-
-            try {
-                const response = await fetch('http://localhost:3000/api/add-stock', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ itemId: id, quantity: quantity, requesterEmail: currentUser.email })
-                });
-                const data = await response.json();
-                console.log('Resposta do servidor:', data);
-
-                if (data.success) {
-                    alert(data.message);
-                    closeStockEntryModal();
-                    loadItens(); // Recarrega a tabela
-                } else {
-                    alert(data.message || 'Erro ao adicionar estoque');
-                }
-            } catch (error) {
-                console.error('Erro na entrada:', error);
-                alert('Erro de conexão. Verifique o servidor.');
-            }
-        }
-
-        function openRemoveStockModal(id) {
-            if (!currentUser || currentUser.role !== 'admin') {
-                alert('Apenas administradores podem remover estoque.');
-                return;
-            }
-            console.log(`Open Remove Stock Modal for Item ${id}`);
-            document.getElementById('stockEntryModal').style.display = 'block';
-            document.getElementById('stockEntryModal').dataset.itemId = id;
-            document.getElementById('stockEntryModal').dataset.action = 'remove';
-            document.getElementById('stockEntryModal').querySelector('h2').textContent = 'Remover Estoque';
-            document.getElementById('entryQuantity').value = '';
-        }
-
-        async function confirmRemoveStock() {
-            const id = document.getElementById('stockEntryModal').dataset.itemId;
-            const quantity = document.getElementById('entryQuantity').value;
-            if (!quantity || isNaN(quantity) || parseInt(quantity, 10) <= 0) {
-                alert('Por favor, insira uma quantidade válida maior que 0.');
-                return;
-            }
-
-            try {
-                const response = await fetch('http://localhost:3000/api/remove-stock', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ itemId: id, quantity: quantity, requesterEmail: currentUser.email })
-                });
-                const data = await response.json();
-                console.log('Resposta do servidor:', data);
-
-                if (data.success) {
-                    alert(data.message);
-                    closeStockEntryModal();
-                    loadItens(); // Recarrega a tabela
-                } else {
-                    alert(data.message || 'Erro ao remover estoque');
-                }
-            } catch (error) {
-                console.error('Erro na baixa:', error);
-                alert('Erro de conexão. Verifique o servidor.');
-            }
-        }
-
-        function openEditItemModal(id) {
-            if (!currentUser || currentUser.role !== 'admin') {
-                alert('Apenas administradores podem editar itens.');
-                return;
-            }
-            console.log(`Open Edit Item Modal for Item ${id}`);
-            const item = itens.find(i => i.id === id);
-            if (item) {
-                document.getElementById('editItemModal').style.display = 'block';
-                document.getElementById('editItemModal').dataset.itemId = id;
-                document.getElementById('editCodigo').value = item.codigo || '';
-                document.getElementById('editSetor').value = item.setor || '';
-                document.getElementById('editNome').value = item.nome || '';
-                document.getElementById('editComplemento').value = item.complemento || '';
-                document.getElementById('editUnidade').value = item.unidade || 'UN';
-                document.getElementById('editQtdInicial').value = item.qtd_inicial || 0;
-                document.getElementById('editQtdMinima').value = item.qtd_minima || 0;
-                document.getElementById('editObservacao').value = item.observacao || '';
-                document.getElementById('editFornecedor').value = item.fornecedor || '';
-                document.getElementById('editNotaFiscal').value = item.nota_fiscal || '';
-                const editPreviewImg = document.getElementById('editPreviewImg');
-                const editImagemPreview = document.getElementById('editImagemPreview');
-                if (item.imagem_path) {
-                    editPreviewImg.src = `/${item.imagem_path}`;
-                    editImagemPreview.style.display = 'block';
-                } else {
-                    editImagemPreview.style.display = 'none';
-                }
-                document.getElementById('editItemMsg').textContent = '';
-            }
-        }
-
-        function closeEditItemModal() {
-            console.log('Close Edit Item Modal clicked');
-            document.getElementById('editItemModal').style.display = 'none';
-            document.getElementById('editItemForm').reset();
-            document.getElementById('editImagemPreview').style.display = 'none';
-            document.getElementById('editItemMsg').textContent = '';
-        }
-
-        // Submit do formulário de edição
-        document.addEventListener('DOMContentLoaded', function() {
+            // Event listener para submit do formulário de edição
             document.getElementById('editItemForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const id = document.getElementById('editItemModal').dataset.itemId;
@@ -697,65 +1063,75 @@
                 }
             });
 
-            // Preview da imagem na edição
-            document.getElementById('editImagem').addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        document.getElementById('editPreviewImg').src = e.target.result;
-                        document.getElementById('editImagemPreview').style.display = 'block';
-                    };
-                    reader.readAsDataURL(file);
+            // Event listener para submit do formulário de edição de usuário
+            document.getElementById('editUserForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const email = document.getElementById('editUserModal').dataset.userEmail;
+                const newRole = document.getElementById('editUserRole').value;
+                try {
+                    const response = await fetch('http://localhost:3000/api/update-user-role', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, newRole, requesterEmail: currentUser.email })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        document.getElementById('editUserMsg').textContent = data.message;
+                        document.getElementById('editUserMsg').style.color = 'green';
+                        closeEditUserModal();
+                        loadUsers();
+                    } else {
+                        document.getElementById('editUserMsg').textContent = data.message || 'Erro ao editar role';
+                        document.getElementById('editUserMsg').style.color = 'red';
+                    }
+                } catch (error) {
+                    document.getElementById('editUserMsg').textContent = 'Erro de conexão. Verifique o servidor.';
+                    document.getElementById('editUserMsg').style.color = 'red';
                 }
             });
-        });
 
-        function previousPage() {
-            console.log('Previous Page clicked');
-            if (currentPage > 1) { currentPage--; renderTable(); }
-        }
+            // Event listener para o modal de estoque
+            const stockModal = document.getElementById('stockEntryModal');
+            stockModal.addEventListener('click', function(e) {
+                if (e.target.classList.contains('confirm-btn')) {
+                    if (stockModal.dataset.action === 'remove') {
+                        confirmRemoveStock();
+                    } else {
+                        confirmStockEntry();
+                    }
+                }
+            });
 
-        function nextPage() {
-            console.log('Next Page clicked');
-            const totalPages = Math.ceil(itens.length / itemsPerPage);
-            if (currentPage < totalPages) { currentPage++; renderTable(); }
-        }
+            // Event listener para submit do formulário de registro de usuário
+            document.getElementById('registerForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const newEmail = document.getElementById('newEmail').value;
+                const newPassword = document.getElementById('newPassword').value;
+                const newRole = document.getElementById('newRole').value;
+                const requesterEmail = currentUser.email;
 
-        // Fechar modais com ESC
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' || e.keyCode === 27) {
-                closeRegisterModal();
-                closeNovoItemModal();
-                closeStockEntryModal();
-                closeEditItemModal();
-            }
-        });
+                try {
+                    const response = await fetch('http://localhost:3000/api/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: newEmail, password: newPassword, role: newRole, requesterEmail })
+                    });
+                    const data = await response.json();
 
-        // Código que depende de DOM pronto
-        document.addEventListener('DOMContentLoaded', () => {
-            // Inicializar currentUser a partir do localStorage
-            currentUser = JSON.parse(localStorage.getItem('loggedUser'));
-            if (!currentUser || !currentUser.email) {
-                currentUser = { name: 'Lucas Pacheco', email: 'lucas.pacheco@senairs.org.br', role: 'admin' }; // Nome explícito como exemplo
-                localStorage.setItem('loggedUser', JSON.stringify(currentUser));
-                console.log('Default user set in localStorage:', currentUser);
-            }
-            console.log('Current User from LocalStorage:', currentUser);
-
-            // Atualizar o nome do usuário na saudação
-            const userNameSpan = document.getElementById('userName');
-            userNameSpan.textContent = currentUser.name || currentUser.email.split('@')[0]; // Usa name se existir, senão o e-mail sem domínio
-
-            const gerenciarBtn = document.getElementById('gerenciarUsuariosBtn');
-            console.log('Gerenciar Usuários Button:', gerenciarBtn);
-
-            if (currentUser && currentUser.role === 'admin') {
-                console.log('User is Admin, setting button to display: block');
-                gerenciarBtn.style.display = 'block';
-            } else {
-                console.log('User is not Admin, keeping button display: none');
-            }
+                    if (data.success) {
+                        document.getElementById('registerMsg').textContent = data.message;
+                        document.getElementById('registerMsg').style.color = 'green';
+                        document.getElementById('registerForm').reset();
+                        loadUsers(); // Recarrega a lista após cadastro
+                    } else {
+                        document.getElementById('registerMsg').textContent = data.message || 'Erro no cadastro';
+                        document.getElementById('registerMsg').style.color = 'red';
+                    }
+                } catch (error) {
+                    document.getElementById('registerMsg').textContent = 'Erro de conexão. Verifique o servidor.';
+                    document.getElementById('registerMsg').style.color = 'red';
+                }
+            });
 
             loadItens(); // Carrega itens da API ou mock
         });
@@ -768,8 +1144,8 @@
             } catch (error) {
                 console.error('Erro ao carregar itens:', error);
                 itens = [
-                    { id: 1, imagem_path: placeholderImg, codigo: '561651651', setor: 'Aços e barras', nome: 'barra de aço', complemento: 'nenhum', unidade: 'UN', qtd_inicial: 10 },
-                    { id: 2, imagem_path: placeholderImg, codigo: '654654645', setor: 'Aços e barras', nome: 'Barra de ferro', complemento: 'nada', unidade: 'UN', qtd_inicial: 5 }
+                    { id: 1, imagem_path: placeholderImg, codigo: '561651651', setor: 'Aços e barras', nome: 'barra de aço', complemento: 'nenhum', unidade: 'UN', qtd_inicial: 10, qtd_minima: 5 },
+                    { id: 2, imagem_path: placeholderImg, codigo: '654654645', setor: 'Aços e barras', nome: 'Barra de ferro', complemento: 'nada', unidade: 'UN', qtd_inicial: 5, qtd_minima: 10 }
                 ];
                 console.log('Usando itens mock:', itens); // Debug do mock
             }
@@ -785,6 +1161,7 @@
             tbody.innerHTML = pageItens.map(item => {
                 console.log('Rendering item:', item); // Debug do item sendo renderizado
                 console.log('Image path:', item.imagem_path); // Debug do caminho da imagem
+                const isUser = currentUser.role === 'user';
                 return `
                     <tr>
                         <td><img src="/${item.imagem_path || placeholderImg}" alt="Item" class="item-img" onerror="this.src='${placeholderImg}'; console.log('Image load failed, using placeholder:', '${item.imagem_path}')"></td>
@@ -793,17 +1170,51 @@
                         <td>${item.nome}</td>
                         <td>${item.complemento}</td>
                         <td>${item.unidade}</td>
-                        <td>${item.qtd_inicial}</td>
+                        <td class="${item.qtd_inicial <= item.qtd_minima ? 'quantidade-minima' : ''}">
+                            ${item.qtd_inicial}
+                        </td>
                         <td>
-                            <button class="action-btn" onclick="openStockEntryModal(${item.id})">Entrada</button>
                             <button class="action-btn" onclick="openRemoveStockModal(${item.id})">Baixa</button>
-                            <button class="action-btn" onclick="openEditItemModal(${item.id})">Editar</button>
+                            <button class="action-btn ${isUser ? 'disabled' : ''}" onclick="openStockEntryModal(${item.id})">Entrada</button>
+                            <button class="action-btn ${isUser ? 'disabled' : ''}" onclick="openEditItemModal(${item.id})">Editar</button>
+                            ${currentUser.role === 'admin' ? `
+                                <button class="btn-excluir" onclick="excluirItem(${item.id})">Excluir</button>
+                            ` : ''}
                         </td>
                     </tr>
                 `;
             }).join('');
 
             updatePagination(filteredItens.length);
+        }
+
+        async function excluirItem(id) {
+            if (currentUser.role !== 'admin') {
+                alert('Apenas administradores podem excluir itens.');
+                return;
+            }
+            if (!confirm("Tem certeza que deseja excluir este item?")) {
+                return;
+            }
+            try {
+                const response = await fetch('http://localhost:3000/api/delete-item', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ itemId: id, requesterEmail: currentUser.email })
+                });
+                const data = await response.json();
+                console.log('Resposta do servidor:', data);
+
+                if (data.success) {
+                    alert(data.message);
+                    loadItens(); // Recarrega a tabela
+                } else {
+                    alert(data.message || 'Erro ao excluir item');
+                }
+            } catch (error) {
+                console.error('Erro ao excluir item:', error);
+                alert('Erro de conexão. Verifique o servidor.');
+            }
         }
 
         function filterTable() {
@@ -825,49 +1236,20 @@
             document.getElementById('nextBtn').disabled = currentPage === totalPages;
         }
 
-        document.getElementById('registerForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const newEmail = document.getElementById('newEmail').value;
-            const newPassword = document.getElementById('newPassword').value;
-            const newRole = document.getElementById('newRole').value;
-            const requesterEmail = currentUser.email;
-
-            try {
-                const response = await fetch('http://localhost:3000/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: newEmail, password: newPassword, role: newRole, requesterEmail })
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    document.getElementById('registerMsg').textContent = data.message;
-                    document.getElementById('registerMsg').style.color = 'green';
-                    document.getElementById('registerForm').reset();
-                    loadUsers(); // Recarrega a lista após cadastro
-                } else {
-                    document.getElementById('registerMsg').textContent = data.message || 'Erro no cadastro';
-                    document.getElementById('registerMsg').style.color = 'red';
-                }
-            } catch (error) {
-                document.getElementById('registerMsg').textContent = 'Erro de conexão. Verifique o servidor.';
-                document.getElementById('registerMsg').style.color = 'red';
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
             }
-        });
+        }
 
-        // Redefinir ação do modal de estoque com base no dataset
-        document.addEventListener('DOMContentLoaded', function() {
-            const modal = document.getElementById('stockEntryModal');
-            modal.addEventListener('click', function(e) {
-                if (e.target.classList.contains('confirm-btn')) {
-                    if (modal.dataset.action === 'remove') {
-                        confirmRemoveStock();
-                    } else {
-                        confirmStockEntry();
-                    }
-                }
-            });
-        });
+        function nextPage() {
+            const totalPages = Math.ceil(itens.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
+            }
+        }
     </script>
 </body>
 </html>

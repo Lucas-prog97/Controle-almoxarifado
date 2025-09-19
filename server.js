@@ -2,7 +2,7 @@ const express = require('express');
 const mysql = require('mysql2');
 const app = express();
 const port = 3000;
-
+app.use('/Imagens', express.static('Imagens'));
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -98,6 +98,27 @@ connection.query(`
   console.log('Tabela itens_almoxarifado criada ou já existente.');
 });
 
+// Criar tabela de movimentações se não existir
+connection.query(`
+  CREATE TABLE IF NOT EXISTS movimentacoes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    item_id INT,
+    tipo ENUM('ENTRADA', 'SAÍDA') NOT NULL,
+    quantidade INT NOT NULL,
+    data DATETIME DEFAULT CURRENT_TIMESTAMP,
+    observacao VARCHAR(255),
+    nota_fiscal VARCHAR(50),
+    usuario VARCHAR(100) NOT NULL,
+    FOREIGN KEY (item_id) REFERENCES itens_almoxarifado(id)
+  )
+`, (err) => {
+  if (err) {
+    console.error('Erro ao criar tabela movimentacoes:', err);
+    throw err;
+  }
+  console.log('Tabela movimentacoes criada ou já existente.');
+});
+
 // Rota de login
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
@@ -148,7 +169,10 @@ app.get('/api/users', (req, res) => {
     'SELECT role FROM usuarios WHERE email = ?',
     [requesterEmail],
     (err, results) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) {
+        console.error('Erro ao verificar role:', err);
+        return res.status(500).json({ error: err.message });
+      }
       if (results.length === 0 || results[0].role !== 'admin') {
         return res.status(403).json({ success: false, message: 'Apenas admins podem listar usuários' });
       }
@@ -157,7 +181,10 @@ app.get('/api/users', (req, res) => {
         'SELECT id, email, role FROM usuarios WHERE email != ?',
         [requesterEmail],
         (err, results) => {
-          if (err) return res.status(500).json({ error: err.message });
+          if (err) {
+            console.error('Erro ao listar usuários:', err);
+            return res.status(500).json({ error: err.message });
+          }
           res.json({ success: true, users: results });
         }
       );
@@ -197,7 +224,10 @@ app.post('/api/delete-user', (req, res) => {
 // Rota para listar itens
 app.get('/api/itens', (req, res) => {
   connection.query('SELECT * FROM itens_almoxarifado', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('Erro ao listar itens:', err);
+      return res.status(500).json({ error: err.message });
+    }
     res.json(results);
   });
 });
@@ -205,7 +235,6 @@ app.get('/api/itens', (req, res) => {
 // Rota para adicionar item (só admins)
 app.post('/api/add-item', upload.single('imagem'), (req, res) => {
   const { codigo, setor, nome, complemento, unidade, qtdInicial, qtdMinima, observacao, fornecedor, notaFiscal, requesterEmail } = req.body;
-  console.log('Dados recebidos para item:', { codigo, setor, nome, complemento, unidade, qtdInicial, qtdMinima, observacao, fornecedor, notaFiscal, requesterEmail }); // Debug
 
   connection.query(
     'SELECT role FROM usuarios WHERE email = ?',
@@ -216,24 +245,18 @@ app.post('/api/add-item', upload.single('imagem'), (req, res) => {
         return res.status(403).json({ success: false, message: 'Apenas admins podem cadastrar itens' });
       }
 
-      // Verificação de código duplicado
       connection.query('SELECT id FROM itens_almoxarifado WHERE codigo = ?', [codigo], (err, dupResults) => {
         if (err) return res.status(500).json({ error: err.message });
         if (dupResults.length > 0) {
           return res.status(400).json({ success: false, message: 'Código já existe. Use um código único.' });
         }
 
-        const imagemPath = req.file ? `Imagens/itens/${req.file.filename}` : null; // Sem / inicial
-        console.log('Arquivo recebido:', req.file); // Debug do arquivo
-        console.log('Caminho da imagem:', imagemPath); // Debug
+        const imagemPath = req.file ? `Imagens/itens/${req.file.filename}` : null;
         connection.query(
           'INSERT INTO itens_almoxarifado (codigo, setor, nome, complemento, unidade, qtd_inicial, qtd_minima, imagem_path, observacao, fornecedor, nota_fiscal, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           [codigo, setor, nome, complemento, unidade, qtdInicial, qtdMinima || 0, imagemPath, observacao || null, fornecedor || null, notaFiscal || null, requesterEmail],
           (err) => {
-            if (err) {
-              console.error('Erro na INSERT:', err); // Debug no terminal
-              return res.status(500).json({ error: err.message });
-            }
+            if (err) return res.status(500).json({ error: err.message });
             res.json({ success: true, message: 'Item cadastrado com sucesso' });
           }
         );
@@ -245,9 +268,7 @@ app.post('/api/add-item', upload.single('imagem'), (req, res) => {
 // Rota para adicionar estoque (só admins)
 app.post('/api/add-stock', (req, res) => {
   const { itemId, quantity, requesterEmail } = req.body;
-  console.log('Dados recebidos para entrada:', { itemId, quantity, requesterEmail }); // Debug
 
-  // Verifica se o usuário é admin
   connection.query(
     'SELECT role FROM usuarios WHERE email = ?',
     [requesterEmail],
@@ -257,7 +278,6 @@ app.post('/api/add-stock', (req, res) => {
         return res.status(403).json({ success: false, message: 'Apenas admins podem adicionar estoque' });
       }
 
-      // Verifica se o item existe
       connection.query(
         'SELECT qtd_inicial FROM itens_almoxarifado WHERE id = ?',
         [itemId],
@@ -270,12 +290,19 @@ app.post('/api/add-stock', (req, res) => {
           const currentQuantity = results[0].qtd_inicial;
           const newQuantity = currentQuantity + parseInt(quantity, 10);
 
-          // Atualiza a quantidade
           connection.query(
             'UPDATE itens_almoxarifado SET qtd_inicial = ? WHERE id = ?',
             [newQuantity, itemId],
             (err) => {
               if (err) return res.status(500).json({ error: err.message });
+              // Registrar movimentação
+              connection.query(
+                'INSERT INTO movimentacoes (item_id, tipo, quantidade, usuario) VALUES (?, ?, ?, ?)',
+                [itemId, 'ENTRADA', quantity, requesterEmail],
+                (err) => {
+                  if (err) console.error('Erro ao registrar movimentação de entrada:', err);
+                }
+              );
               res.json({ success: true, message: 'Estoque atualizado com sucesso', newQuantity });
             }
           );
@@ -288,9 +315,7 @@ app.post('/api/add-stock', (req, res) => {
 // Rota para remover estoque (só admins)
 app.post('/api/remove-stock', (req, res) => {
   const { itemId, quantity, requesterEmail } = req.body;
-  console.log('Dados recebidos para baixa:', { itemId, quantity, requesterEmail }); // Debug
 
-  // Verifica se o usuário é admin
   connection.query(
     'SELECT role FROM usuarios WHERE email = ?',
     [requesterEmail],
@@ -300,7 +325,6 @@ app.post('/api/remove-stock', (req, res) => {
         return res.status(403).json({ success: false, message: 'Apenas admins podem remover estoque' });
       }
 
-      // Verifica se o item existe
       connection.query(
         'SELECT qtd_inicial FROM itens_almoxarifado WHERE id = ?',
         [itemId],
@@ -318,12 +342,19 @@ app.post('/api/remove-stock', (req, res) => {
 
           const newQuantity = currentQuantity - requestedQuantity;
 
-          // Atualiza a quantidade
           connection.query(
             'UPDATE itens_almoxarifado SET qtd_inicial = ? WHERE id = ?',
             [newQuantity, itemId],
             (err) => {
               if (err) return res.status(500).json({ error: err.message });
+              // Registrar movimentação
+              connection.query(
+                'INSERT INTO movimentacoes (item_id, tipo, quantidade, usuario) VALUES (?, ?, ?, ?)',
+                [itemId, 'SAÍDA', quantity, requesterEmail],
+                (err) => {
+                  if (err) console.error('Erro ao registrar movimentação de saída:', err);
+                }
+              );
               res.json({ success: true, message: 'Estoque removido com sucesso', newQuantity });
             }
           );
@@ -347,7 +378,6 @@ app.post('/api/update-item', upload.single('imagem'), (req, res) => {
         return res.status(403).json({ success: false, message: 'Apenas admins podem editar itens' });
       }
 
-      // Verifica se o item existe
       connection.query(
         'SELECT * FROM itens_almoxarifado WHERE id = ?',
         [id],
@@ -357,7 +387,6 @@ app.post('/api/update-item', upload.single('imagem'), (req, res) => {
             return res.status(404).json({ success: false, message: 'Item não encontrado' });
           }
 
-          // Verifica duplicata de código (exceto se for o mesmo item)
           if (results[0].codigo !== codigo) {
             connection.query(
               'SELECT id FROM itens_almoxarifado WHERE codigo = ? AND id != ?',
@@ -367,30 +396,118 @@ app.post('/api/update-item', upload.single('imagem'), (req, res) => {
                 if (dupResults.length > 0) {
                   return res.status(400).json({ success: false, message: 'Código já existe. Use um código único.' });
                 }
-
-                updateItemInDatabase();
-              }
-            );
-          } else {
-            updateItemInDatabase();
-          }
-
-          function updateItemInDatabase() {
-            connection.query(
-              'UPDATE itens_almoxarifado SET codigo = ?, setor = ?, nome = ?, complemento = ?, unidade = ?, qtd_inicial = ?, qtd_minima = ?, imagem_path = ?, observacao = ?, fornecedor = ?, nota_fiscal = ? WHERE id = ?',
-              [codigo, setor, nome, complemento, unidade, qtdInicial, qtdMinima || 0, imagemPath || results[0].imagem_path, observacao || null, fornecedor || null, notaFiscal || null, id],
-              (err) => {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ success: true, message: 'Item atualizado com sucesso' });
               }
             );
           }
+
+          connection.query(
+            'UPDATE itens_almoxarifado SET codigo = ?, setor = ?, nome = ?, complemento = ?, unidade = ?, qtd_inicial = ?, qtd_minima = ?, imagem_path = ?, observacao = ?, fornecedor = ?, nota_fiscal = ? WHERE id = ?',
+            [codigo, setor, nome, complemento, unidade, qtdInicial, qtdMinima || 0, imagemPath || results[0].imagem_path, observacao || null, fornecedor || null, notaFiscal || null, id],
+            (err) => {
+              if (err) return res.status(500).json({ error: err.message });
+              res.json({ success: true, message: 'Item atualizado com sucesso' });
+            }
+          );
         }
       );
     }
   );
 });
 
-app.listen(port, () => {
-  console.log(`Servidor rodando em http://localhost:${port}`);
+// Nova rota para atualizar a role do usuário (só admins)
+app.post('/api/update-user-role', (req, res) => {
+  const { email, newRole, requesterEmail } = req.body;
+
+  connection.query(
+    'SELECT role FROM usuarios WHERE email = ?',
+    [requesterEmail],
+    (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (results.length === 0 || results[0].role !== 'admin') {
+        return res.status(403).json({ success: false, message: 'Apenas admins podem editar roles' });
+      }
+
+      if (email === requesterEmail) {
+        return res.status(400).json({ success: false, message: 'Você não pode alterar a sua própria role' });
+      }
+
+      connection.query(
+        'UPDATE usuarios SET role = ? WHERE email = ?',
+        [newRole, email],
+        (err) => {
+          if (err) return res.status(500).json({ error: err.message });
+          res.json({ success: true, message: 'Role do usuário atualizada com sucesso' });
+        }
+      );
+    }
+  );
+});
+
+// Rota para excluir item (só admins)
+app.post('/api/delete-item', (req, res) => {
+  const { itemId, requesterEmail } = req.body;
+
+  connection.query(
+    'SELECT role FROM usuarios WHERE email = ?',
+    [requesterEmail],
+    (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (results.length === 0 || results[0].role !== 'admin') {
+        return res.status(403).json({ success: false, message: 'Apenas admins podem excluir itens' });
+      }
+
+      connection.query(
+        'DELETE FROM itens_almoxarifado WHERE id = ?',
+        [itemId],
+        (err) => {
+          if (err) return res.status(500).json({ error: err.message });
+          res.json({ success: true, message: 'Item excluído com sucesso' });
+        }
+      );
+    }
+  );
+});
+
+// Nova rota para listar movimentações
+app.get('/api/movimentacoes', (req, res) => {
+  connection.query(
+    'SELECT m.*, i.codigo, i.nome FROM movimentacoes m LEFT JOIN itens_almoxarifado i ON m.item_id = i.id ORDER BY m.data DESC',
+    (err, results) => {
+      if (err) {
+        console.error('Erro ao listar movimentações:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json(results.map(row => ({
+        id: row.id,
+        item_id: row.item_id,
+        tipo: row.tipo,
+        quantidade: row.quantidade,
+        data: row.data.toISOString().split('T')[0] + ', ' + row.data.toTimeString().split(' ')[0],
+        observacao: row.observacao,
+        nota_fiscal: row.nota_fiscal,
+        usuario: row.usuario,
+        codigo: row.codigo,
+        nome: row.nome
+      })));
+    }
+  );
+});
+
+// Função para obter IP local (usada na mensagem do servidor)
+function getLocalIp() {
+  const os = require('os');
+  const interfaces = os.networkInterfaces();
+  for (let iface of Object.values(interfaces)) {
+    for (let alias of iface) {
+      if (alias.family === 'IPv4' && !alias.internal) {
+        return alias.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
+
+// Iniciar servidor
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Servidor rodando em http://0.0.0.0:${port} (acessível na rede local via ${getLocalIp()})`);
 });
